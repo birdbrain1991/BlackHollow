@@ -8,9 +8,40 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0A0705; overflow: hidden; }
   canvas { display: block; width: 100vw; height: 100vh; }
+
+  #back-btn {
+    position: fixed;
+    top: 28px;
+    left: 32px;
+    z-index: 100;
+    font-family: 'Special Elite', cursive;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #F5EDD6;
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.3s, color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #back-btn::before {
+    content: '←';
+    font-size: 16px;
+    color: #CC1111;
+    text-shadow: 0 0 10px rgba(204,17,17,0.7);
+  }
+  #back-btn:hover {
+    opacity: 1;
+    color: #CC1111;
+  }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
 </head>
 <body>
+<a id="back-btn" href="https://birdbrain1991.github.io/vault/">vault</a>
 <canvas id="c"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -25,7 +56,7 @@
   renderer.toneMappingExposure = 1.1;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xFF6633, 50, 95);
+  scene.fog = new THREE.Fog(0x050203, 30, 75);
 
   // ── SKY GRADIENT ──
   const skyGeo = new THREE.SphereGeometry(80, 16, 8);
@@ -36,10 +67,14 @@
       varying vec3 vPos;
       void main(){
         float t = clamp((vPos.y+10.)/65.,0.,1.);
-        vec3 top    = vec3(0.50,0.12,0.28);
-        vec3 mid    = vec3(0.96,0.42,0.10);
-        vec3 bot    = vec3(0.18,0.08,0.08);
-        vec3 col = t>0.5 ? mix(mid,top,(t-0.5)*2.) : mix(bot,mid,t*2.);
+        vec3 top    = vec3(0.12,0.03,0.18);  // deep violet
+        vec3 hi     = vec3(0.45,0.08,0.30);  // magenta/pink
+        vec3 mid    = vec3(0.75,0.28,0.06);  // burnt orange
+        vec3 bot    = vec3(0.06,0.02,0.04);  // near black
+        vec3 col;
+        if(t>0.66)      col=mix(hi, top, (t-0.66)*3.0);
+        else if(t>0.33) col=mix(mid, hi, (t-0.33)*3.0);
+        else            col=mix(bot, mid, t*3.0);
         gl_FragColor=vec4(col,1.);
       }
     `
@@ -189,10 +224,36 @@
   tree(22,-2,11);  tree(20,6,8);   tree(24,3,13); tree(18,9,10);
   tree(4,-11,9);   tree(-3,-10,10); tree(10,-12,8);
 
-  // ── LIGHTING ──
-  scene.add(new THREE.AmbientLight(0xFF8844,0.85));
+  // organic dense treeline around horizon
+  const forest = [
+    // back row far
+    [-32,-32,16],[-28,-31,14],[-24,-33,17],[-20,-30,13],[-16,-32,15],[-12,-31,18],[-8,-33,14],
+    [-4,-30,16],[0,-32,15],[4,-31,17],[8,-33,13],[12,-30,16],[16,-32,14],[20,-31,17],[24,-33,15],[28,-30,16],[32,-32,13],
+    // back row mid
+    [-30,-26,12],[-26,-25,15],[-22,-27,13],[-18,-24,16],[-14,-26,12],[-10,-25,14],[-6,-27,16],
+    [-2,-24,13],[2,-26,15],[6,-25,12],[10,-27,14],[14,-24,16],[18,-26,13],[22,-25,15],[26,-27,12],[30,-24,14],
+    // left side
+    [-32,-24,15],[-33,-18,13],[-31,-12,16],[-32,-6,14],[-33,0,17],[-31,6,13],[-32,12,15],[-33,18,12],[-31,24,16],
+    [-27,-20,14],[-28,-10,12],[-26,-2,15],[-27,8,13],[-26,16,16],
+    // right side
+    [32,-22,14],[33,-16,16],[31,-8,13],[32,0,15],[33,8,12],[31,14,16],[32,20,14],[33,26,13],
+    [27,-18,15],[28,-6,13],[26,2,16],[27,10,14],[28,18,12],[26,24,15],
+    // front sides (flanking hotel)
+    [-32,28,15],[-28,30,13],[-24,29,16],[-20,31,14],[-16,28,12],
+    [16,30,14],[20,29,16],[24,31,13],[28,28,15],[32,30,12],
+    // inner fill patches
+    [-24,-18,11],[-20,-16,13],[-16,-19,10],[-12,-17,12],
+    [22,-16,11],[24,-18,13],[26,-14,10],[20,-17,12],
+    [-24,18,12],[-22,20,10],[24,16,11],[22,19,13],
+    [-18,-22,10],[18,-22,11],[0,-22,12],[8,-20,10],[-8,-21,13],
+  ];
+  forest.forEach(([x,z,h]) => tree(x,z,h));
 
-  const sun=new THREE.DirectionalLight(0xFFAA55,2.4);
+  // ── LIGHTING ──
+  scene.add(new THREE.AmbientLight(0x0D0408, 1.0)); // near black ambient
+
+  // main orange sun — bright key light on hotel
+  const sun=new THREE.DirectionalLight(0xFF6622, 1.8);
   sun.position.set(18,14,16);
   sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);
@@ -201,13 +262,31 @@
   sun.shadow.camera.far=90;
   scene.add(sun);
 
-  const fill=new THREE.DirectionalLight(0x883355,0.55);
-  fill.position.set(-14,8,-8); scene.add(fill);
+  // pink/magenta fill from left
+  const pink=new THREE.DirectionalLight(0xFF1177, 0.7);
+  pink.position.set(-16,10,-6); scene.add(pink);
 
-  const wg1=new THREE.PointLight(0x6688FF,1.3,8);
-  wg1.position.set(mx,2.5,mz-5); scene.add(wg1);
-  const wg2=new THREE.PointLight(0x6688FF,0.9,7);
-  wg2.position.set(rx,2.2,rz-5); scene.add(wg2);
+  // violet from above-back
+  const violet=new THREE.DirectionalLight(0x6622CC, 0.5);
+  violet.position.set(0,20,-15); scene.add(violet);
+
+  // bright orange point light close to hotel front — fades with distance
+  const hotelGlow=new THREE.PointLight(0xFF8833, 6.0, 20);
+  hotelGlow.position.set(mx-1, 3.5, mz-3); scene.add(hotelGlow);
+
+  // pink point on right wing
+  const pinkGlow=new THREE.PointLight(0xFF2277, 5.0, 18);
+  pinkGlow.position.set(rx, 3.0, rz-3); scene.add(pinkGlow);
+
+  // violet haze near ground centre — fades fast
+  const violetGlow=new THREE.PointLight(0x8833FF, 3.5, 14);
+  violetGlow.position.set(3, 1.0, 2); scene.add(violetGlow);
+
+  // window blue glow
+  const wg1=new THREE.PointLight(0x6688FF, 1.0, 6);
+  wg1.position.set(mx, 2.5, mz-4); scene.add(wg1);
+  const wg2=new THREE.PointLight(0x6688FF, 0.7, 5);
+  wg2.position.set(rx, 2.2, rz-4); scene.add(wg2);
 
   // ── RESIZE ──
   window.addEventListener('resize',()=>{
