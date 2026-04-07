@@ -50,15 +50,14 @@
     text-transform: uppercase;
     color: #F5EDD6;
     background: none;
-    border: 1px solid rgba(245,237,214,0.35);
+    border: none;
     padding: 14px 36px;
     cursor: pointer;
-    transition: color 0.3s, border-color 0.3s, text-shadow 0.3s;
+    transition: color 0.3s, text-shadow 0.3s;
     white-space: nowrap;
   }
   #enter-btn:hover {
     color: #fff;
-    border-color: rgba(245,237,214,0.8);
     text-shadow: 0 0 18px rgba(255,255,255,0.4);
   }
 
@@ -89,6 +88,17 @@
     pointer-events: none;
     transition: opacity 1.2s ease;
   }
+
+  /* ── FADE FRONT — above curtains ── */
+  #fade-front {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.4s ease;
+  }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
@@ -97,6 +107,7 @@
 <a id="back-btn" href="https://birdbrain1991.github.io/vault/">vault</a>
 <button id="enter-btn">[ Enter Lodge ]</button>
 <div id="fade"></div>
+<div id="fade-front"></div>
 <div id="curtain-left"></div>
 <div id="curtain-right"></div>
 <canvas id="c"></canvas>
@@ -421,50 +432,46 @@ function makeCurtainSVG(side) {
 }
 
 document.getElementById('enter-btn').addEventListener('click', () => {
-  const cl   = document.getElementById('curtain-left');
-  const cr   = document.getElementById('curtain-right');
-  const fade = document.getElementById('fade');
-  const hw   = Math.ceil(window.innerWidth / 2) + 20;
+  const cl        = document.getElementById('curtain-left');
+  const cr        = document.getElementById('curtain-right');
+  const fade      = document.getElementById('fade');
+  const fadeFront = document.getElementById('fade-front');
+  const hw        = Math.ceil(window.innerWidth / 2) + 20;
 
-  // inject SVGs
   cl.innerHTML = makeCurtainSVG('left');
   cr.innerHTML = makeCurtainSVG('right');
   cl.querySelector('svg').style.width = hw + 'px';
   cr.querySelector('svg').style.width = hw + 'px';
 
-  // open curtains to full width
   requestAnimationFrame(() => {
+    // curtains close
     cl.style.width = hw + 'px';
     cr.style.width = hw + 'px';
+    // front fade starts simultaneously
+    fadeFront.style.opacity = '1';
+    fadeFront.style.pointerEvents = 'all';
   });
 
-  // behind the curtains: slow fade to black
+  // behind curtains: fade to black
   setTimeout(() => {
     fade.style.opacity = '1';
     fade.style.background = '#000';
     fade.style.pointerEvents = 'all';
   }, 400);
 
-  // spooky maroon bleed — flicker then hold
+  // spooky maroon flicker behind curtains
   setTimeout(() => {
     fade.style.transition = 'background 0.15s ease';
     fade.style.background = '#3A0008';
   }, 1600);
-  setTimeout(() => {
-    fade.style.background = '#000';
-  }, 1750);
-  setTimeout(() => {
-    fade.style.background = '#6B0012';
-  }, 1900);
-  setTimeout(() => {
-    fade.style.background = '#1a0004';
-  }, 2100);
+  setTimeout(() => { fade.style.background = '#000'; }, 1750);
+  setTimeout(() => { fade.style.background = '#6B0012'; }, 1900);
+  setTimeout(() => { fade.style.background = '#1a0004'; }, 2100);
   setTimeout(() => {
     fade.style.background = '#8B0020';
     fade.style.transition = 'background 0.4s ease';
   }, 2300);
 
-  // redirect
   setTimeout(() => {
     window.location.href = 'https://birdbrain1991.github.io/BlackGallery/';
   }, 3000);
