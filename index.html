@@ -36,12 +36,69 @@
     opacity: 1;
     color: #CC1111;
   }
+
+  /* ── ENTER BUTTON ── */
+  #enter-btn {
+    position: fixed;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    font-family: 'Special Elite', cursive;
+    font-size: 15px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #F5EDD6;
+    background: none;
+    border: 1px solid rgba(245,237,214,0.35);
+    padding: 14px 36px;
+    cursor: pointer;
+    transition: color 0.3s, border-color 0.3s, text-shadow 0.3s;
+    white-space: nowrap;
+  }
+  #enter-btn:hover {
+    color: #fff;
+    border-color: rgba(245,237,214,0.8);
+    text-shadow: 0 0 18px rgba(255,255,255,0.4);
+  }
+
+  /* ── CURTAIN OVERLAY ── */
+  #curtain-left, #curtain-right {
+    position: fixed;
+    top: 0;
+    height: 100vh;
+    z-index: 200;
+    overflow: hidden;
+    width: 0;
+    transition: width 1.2s cubic-bezier(0.6,0,0.2,1);
+  }
+  #curtain-left  { left: 0; }
+  #curtain-right { right: 0; }
+  #curtain-left svg, #curtain-right svg {
+    height: 100%;
+    display: block;
+  }
+
+  /* ── FADE OVERLAY — behind curtains ── */
+  #fade {
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.2s ease;
+  }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&display=swap" rel="stylesheet">
 </head>
 <body>
 <a id="back-btn" href="https://birdbrain1991.github.io/vault/">vault</a>
+<button id="enter-btn">[ Enter Lodge ]</button>
+<div id="fade"></div>
+<div id="curtain-left"></div>
+<div id="curtain-right"></div>
 <canvas id="c"></canvas>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -297,6 +354,121 @@
 
   renderer.render(scene,camera);
 })();
+
+// ── CURTAIN TRANSITION ──
+function makeCurtainSVG(side) {
+  const W = Math.ceil(window.innerWidth / 2) + 20;
+  const H = window.innerHeight;
+  const folds = 7;
+  const foldW = W / folds;
+
+  // fold shading gradients
+  let defs = '';
+  let foldRects = '';
+  for (let i = 0; i < folds; i++) {
+    const x = i * foldW;
+    const light = i % 2 === 0;
+    const id = `fold${side}${i}`;
+    const c1 = light ? 210 : 140;
+    const c2 = light ? 240 : 170;
+    const c3 = light ? 180 : 110;
+    defs += `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="rgb(${c1},${c1},${c1})"/>
+      <stop offset="45%"  stop-color="rgb(${c2},${c2},${c2})"/>
+      <stop offset="100%" stop-color="rgb(${c3},${c3},${c3})"/>
+    </linearGradient>`;
+    foldRects += `<rect x="${x}" y="0" width="${foldW}" height="${H}" fill="url(#${id})"/>`;
+  }
+
+  // vertical zigzag stripes across curtain
+  const zW = 28;   // width of each zigzag column
+  const zH = 20;   // tooth height
+  let zigPaths = '';
+  const cols = Math.ceil(W / zW) + 1;
+  const rows = Math.ceil(H / zH) + 1;
+
+  for (let col = 0; col < cols; col++) {
+    const x = col * zW;
+    let d = `M ${x} 0 `;
+    for (let row = 0; row < rows; row++) {
+      const y = row * zH;
+      d += `L ${x + zW / 2} ${y + zH / 2} L ${x} ${y + zH} `;
+    }
+    // close stripe as filled shape
+    const d2 = `M ${x} 0 ` + (() => {
+      let s = '';
+      for (let row = 0; row < rows; row++) {
+        const y = row * zH;
+        s += `L ${x + zW / 2} ${y + zH / 2} L ${x} ${y + zH} `;
+      }
+      return s;
+    })() + `L ${x - zW / 2} ${H} ` + (() => {
+      let s = '';
+      for (let row = rows - 1; row >= 0; row--) {
+        const y = row * zH;
+        s += `L ${x - zW / 2} ${y + zH / 2} L ${x} ${y} `;
+      }
+      return s;
+    })() + 'Z';
+    zigPaths += `<path d="${d2}" fill="#000" fill-opacity="1"/>`;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>${defs}</defs>
+    ${foldRects}
+    ${zigPaths}
+  </svg>`;
+}
+
+document.getElementById('enter-btn').addEventListener('click', () => {
+  const cl   = document.getElementById('curtain-left');
+  const cr   = document.getElementById('curtain-right');
+  const fade = document.getElementById('fade');
+  const hw   = Math.ceil(window.innerWidth / 2) + 20;
+
+  // inject SVGs
+  cl.innerHTML = makeCurtainSVG('left');
+  cr.innerHTML = makeCurtainSVG('right');
+  cl.querySelector('svg').style.width = hw + 'px';
+  cr.querySelector('svg').style.width = hw + 'px';
+
+  // open curtains to full width
+  requestAnimationFrame(() => {
+    cl.style.width = hw + 'px';
+    cr.style.width = hw + 'px';
+  });
+
+  // behind the curtains: slow fade to black
+  setTimeout(() => {
+    fade.style.opacity = '1';
+    fade.style.background = '#000';
+    fade.style.pointerEvents = 'all';
+  }, 400);
+
+  // spooky maroon bleed — flicker then hold
+  setTimeout(() => {
+    fade.style.transition = 'background 0.15s ease';
+    fade.style.background = '#3A0008';
+  }, 1600);
+  setTimeout(() => {
+    fade.style.background = '#000';
+  }, 1750);
+  setTimeout(() => {
+    fade.style.background = '#6B0012';
+  }, 1900);
+  setTimeout(() => {
+    fade.style.background = '#1a0004';
+  }, 2100);
+  setTimeout(() => {
+    fade.style.background = '#8B0020';
+    fade.style.transition = 'background 0.4s ease';
+  }, 2300);
+
+  // redirect
+  setTimeout(() => {
+    window.location.href = 'https://birdbrain1991.github.io/BlackGallery/';
+  }, 3000);
+});
 </script>
 </body>
 </html>
